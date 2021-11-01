@@ -1,46 +1,43 @@
-from tensorflow.keras import Model
+from tensorflow.keras import Model, Sequential, layers, callbacks, datasets
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
-(train_input, train_target) , (test_input, test_target) = tf.keras.datasets.fashion_mnist.load_data()
-train_input = train_input/255.0
-test_input = test_input/255.0
-train_input = train_input.reshape(-1,28,28,1)
-test_input = test_input.reshape(-1,28,28,1)
+(train_input, train_target), (test_input, test_target) = datasets.fashion_mnist.load_data()
+train_input, test_input = train_input/255.0, test_input/225.0
+train_input, test_input = train_input.reshape(-1,28,28,1), test_input.reshape(-1,28,28,1)
+train_input, val_input, train_target, val_target = train_test_split(train_input, train_target,
+                                                                    train_size=0.2, random_state=42)
 
 num_classes = 10
-
 class CNN(Model):
     def __init__(self, num_classes):
         super(CNN, self).__init__()
-        self.conv1 = tf.keras.layers.Conv2D(32, kernel_size = 3, padding = 'same', activation = 'relu')
-        self.conv2 = tf.keras.layers.Conv2D(64, kernel_size = 3, padding = 'same', activation = 'relu')
-        self.max_pool = tf.keras.layers.MaxPool2D(2)
-        self.flatten = tf.keras.layers.Flatten()
-        self.dense1 = tf.keras.layers.Dense(100, activation = 'relu')
-        self.dense2 = tf.keras.layers.Dense(num_classes, activation = 'softmax')
-        self.dropout = tf.keras.layers.Dropout(0.4)
+        self.conv1 = layers.Conv2D(32, kernel_size=3, padding='same', activation='relu')
+        self.conv2 = layers.Conv2D(64, kernel_size=3, padding='same', activation='relu')
+        self.maxpool = layers.MaxPool2D(2)
+        self.flatten = layers.Flatten()
+        self.Dense1 = layers.Dense(100, activation='relu')
+        self.Dense2 = layers.Dense(num_classes, activation= 'softmax')
+        self.dropout = layers.Dropout(0.4)
 
-
-    def call(self, input_data):
-        x = self.max_pool(self.conv1(input_data))
-        x = self.max_pool(self.conv2(x))
-        x = self.flatten(x)
-        x = self.dense2(self.dropout(self.dense1(x)))
-
+    def call(self, inputs_data):
+        x = self.maxpool(self.conv2(self.maxpool(self.conv1(inputs_data))))
+        x = self.Dense2(self.dropout(self.Dense1(self.flatten(x))))
         return x
 
 model = CNN(num_classes)
-
 model.compile(
-    optimizer = 'adam', loss = 'sparse_categorical_crossentropy', metrics= 'accuracy'
+    optimizer= 'adam', loss= 'sparse_categorical_crossentropy', metrics= 'accuracy'
 )
 
-early_stopping_cb = tf.keras.callbacks.EarlyStopping(patience=2, restore_best_weights = True)
+early_stopping_cb = callbacks.EarlyStopping(patience=2, restore_best_weights=True)
 
-history = model.fit(train_input, train_target, epochs=20, validation_data=(test_input, test_target),
+history = model.fit(train_input, train_target, epochs=20, validation_data=(val_input, val_target),
                     callbacks=[early_stopping_cb])
+model.evaluate(test_input, test_target)
+y = model.predict(test_input)
+print(y[0], test_target[0])
 
 plt.subplot(221)
 plt.plot(history.history['loss'])
