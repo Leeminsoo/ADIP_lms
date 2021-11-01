@@ -1,0 +1,132 @@
+from tensorflow.keras import Model, layers, callbacks
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+
+num_classes = 10
+
+class ResNet50(Model):
+    def __init__(self, num_classes):
+        super(ResNet50, self).__init__()
+        self.conv1 = layers.Conv2D(64, kernel_size=(7,7), strides=2, activation= 'relu', padding= 'same')
+
+        self.Max_pool = layers.MaxPool2D(3, strides=2)
+        self.conv2_1 = layers.Conv2D(64, kernel_size=(1,1), activation='relu')
+        self.conv2_2 = layers.Conv2D(64, kernel_size=(3,3), activation='relu', padding= 'same')
+        self.conv2_3 = layers.Conv2D(256, kernel_size=(1,1), activation='relu')
+
+        self.conv3_1 = layers.Conv2D(128, kernel_size=1, activation='relu')
+        self.conv3_2 = layers.Conv2D(128, kernel_size=3, activation='relu', padding='same')
+        self.conv3_3 = layers.Conv2D(512, kernel_size=1, activation='relu')
+
+        self.conv4_1 = layers.Conv2D(256, kernel_size=1, activation='relu')
+        self.conv4_2 = layers.Conv2D(256, kernel_size=3, activation='relu', padding= 'same')
+        self.conv4_3 = layers.Conv2D(1024, kernel_size=1, activation='relu')
+
+        self.conv5_1 = layers.Conv2D(512, kernel_size=1, activation='relu')
+        self.conv5_2 = layers.Conv2D(512, kernel_size=3, activation='relu', padding='same')
+        self.conv5_3 = layers.Conv2D(2048, kernel_size=1, activation='relu')
+
+        self.batch_normal = layers.BatchNormalization()
+        self.relu = layers.Activation(activation='relu')
+        self.glo_avg_pool = layers.GlobalAvgPool2D()
+        self.Dense = layers.Dense(num_classes, activation= 'softmax')
+
+
+
+    def conv_2(self,x):
+        x = self.Max_pool(x)
+        short_cut = x
+        for i in range(3):
+            if i == 0:
+                x = self.relu(self.batch_normal(self.conv2_1(x)))
+                x = self.relu(self.batch_normal(self.conv2_2(x)))
+                x = self.batch_normal(self.conv2_3(x))
+                short_cut = self.batch_normal(self.conv2_3(short_cut))
+                x = self.relu(layers.Add()([x, short_cut]))
+
+                short_cut = x
+
+            else :
+                x = self.relu(self.batch_normal(self.conv2_1(x)))
+                x = self.relu(self.batch_normal(self.conv2_2(x)))
+                x = self.batch_normal(self.conv2_3(x))
+
+                x = self.relu(layers.Add()([x, short_cut]))
+
+                short_cut = x
+        return x
+
+    def conv_3(self, x):
+        short_cut = x
+        for i in range(4):
+            if i == 0:
+                x = self.relu(self.batch_normal(self.conv3_1(x)))
+                x = self.relu(self.batch_normal(self.conv3_2(x)))
+                x = self.batch_normal(self.conv3_3(x))
+
+                short_cut = self.batch_normal(self.conv3_3(short_cut))
+                x = self.relu(layers.Add()([x, short_cut]))
+                short_cut = x
+
+            else:
+                x = self.relu(self.batch_normal(self.conv3_1(x)))
+                x = self.relu(self.batch_normal(self.conv3_2(x)))
+                x = self.batch_normal(self.conv3_3(x))
+
+                x = self.relu(layers.Add()([x, short_cut]))
+                short_cut = x
+        return x
+
+    def conv_4(self,x):
+        short_cut = x
+        for i in range(6):
+            if i == 0:
+                x = self.relu(self.batch_normal(self.conv4_1(x)))
+                x = self.relu(self.batch_normal(self.conv4_2(x)))
+                x = self.batch_normal(self.conv4_3(x))
+
+                short_cut = self.batch_normal(self.conv4_3(short_cut))
+                x = self.relu(layers.Add()([x, short_cut]))
+                short_cut = x
+
+            else:
+                x = self.relu(self.batch_normal(self.conv4_1(x)))
+                x = self.relu(self.batch_normal(self.conv4_2(x)))
+                x = self.batch_normal(self.conv4_3(x))
+
+                x = self.relu(layers.Add()([x, short_cut]))
+                short_cut = x
+        return x
+
+    def conv_5(self,x):
+        short_cut = x
+        for i in range(3):
+            if i == 0:
+                x = self.relu(self.batch_normal(self.conv5_1(x)))
+                x = self.relu(self.batch_normal(self.conv5_2(x)))
+                x = self.batch_normal(self.conv5_3(x))
+
+                short_cut = self.batch_normal(self.conv5_3(short_cut))
+                x = self.relu(layers.Add()([x, short_cut]))
+                short_cut = x
+
+            else:
+                x = self.relu(self.batch_normal(self.conv5_1(x)))
+                x = self.relu(self.batch_normal(self.conv5_2(x)))
+                x = self.batch_normal(self.conv5_3(x))
+
+                x = self.relu(layers.Add()([x, short_cut]))
+                short_cut = x
+        return x
+
+    def call(self, inputs_data):
+        x = self.conv1(inputs_data)
+        x = self.conv_2(x)
+        x = self.conv_3(x)
+        x = self.conv_4(x)
+        x = self.conv_5(x)
+        x = self.glo_avg_pool(x)
+        x = self.Dense(x)
+
+        return x
